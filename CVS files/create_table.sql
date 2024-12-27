@@ -1,3 +1,10 @@
+CREATE TABLE users (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ username VARCHAR(255) NOT NULL UNIQUE,
+ password VARCHAR(64) NOT NULL
+);
+
+
 CREATE TABLE country_wise_latest(
     Country_Region VARCHAR(30),
     Confirmed INT DEFAULT 0,
