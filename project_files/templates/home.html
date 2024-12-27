@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <title>主頁</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #000000;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .sticky{
+            background-color: blue;
+            position:fixed;
+            top:0px;
+            width:100%;
+            margin:0px;
+        }
+        .main{
+            margin:100px 0px;
+        }
+        .sticky-left{
+            float:left;
+            margin:10px 2px;
+            color:#ffffff;
+            display:inline-flex;
+        }
+        .sticky-right{
+            float:right;
+            margin:10px 2px;
+            background-color: green;
+            color:#ffffff;
+            border:1px solid #000000;
+            border-radius: 4px;
+            width:auto;
+            display:inline-flex;
+        }
+        .button-box1{
+            margin:0px 320px;
+        }
+        .button1{
+            background-color: chartreuse;
+            color:#000000;
+            list-style-type:none;
+            margin: 20px 0px;
+            padding:15px 0px;
+            border:1px solid #000000;
+            border-radius: 8px;
+        }
+        a{
+            text-decoration: none;
+        }
+        footer{
+            color:gray;
+        }
+    </style>
+</head>
+<body> 
+    <div class="sticky">
+        <p class="sticky-left">DMBS Final Project Group 31</p>
+        <form action="/logout" method="get">
+            <button class="sticky-right" type="submit">Log Out</button>
+        </form>
+    </div>
+    <div class="main">
+        <h2>{{session[username]}},想要開始什麼功能呢？</h2>
+        <ul class="button-box1">
+            <a href="{{ url_for('query') }}"><li class="button1">Query</li></a>
+            <a href="b.hrml"><li class="button1">b</li></a>
+            <a href="c.html"><li class="button1">c</li></a>
+            <a href="d.html"><li class="button1">d</li></a>
+        </ul>
+    </div>
+</body>
+</html>
