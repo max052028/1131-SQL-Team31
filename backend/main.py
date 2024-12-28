@@ -57,19 +57,134 @@ def login():
     return render_template("login.html")
 
 # Home Page
-@app.route("/home")
+@app.route("/home", methods=["GET", "POST"])
 def home():
     if 'username' not in session:
         return redirect("/") # to login page
+
     return render_template("home.html")
 
 # Query Page
-@app.route("/query")
+@app.route("/query", methods=["GET", "POST"])
 def query():
+    if request.method == "POST":
+
+        # Connect to the database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # recieve query type
+        query_type = request.form.get('query')  # e.g. 'country-query'
+
+        if query_type == "country-query":
+            country_1 = request.form.get('country-name') 
+            cursor.execute(f"""SELECT t.Confirmed as total_cases 
+                           FROM country_wise_latest t 
+                           WHERE t.Country_Region = %s;
+                           """, ((country_1),))
+            result = cursor.fetchone()
+
+            # Close the connection
+            cursor.close()
+            conn.close()
+
+            # need to handle output, redirect to result page
+            flash(f"{country_1}'s total cases: {result}", "success") 
+            return redirect("/query")
+
+        if query_type == "continent-query":
+            continent_1 = request.form.get('continent-name')
+            cursor.execute(f"""SELECT SUM(t.TotalCases) as total_cases 
+                           FROM  worldometer_data t 
+                           WHERE t.Continent = %s 
+                           GROUP BY t.Continent;
+                           """, ((continent_1),))
+            result = cursor.fetchone()
+
+            # Close the connection
+            cursor.close()
+            conn.close()
+
+            # need to handle output, redirect to result page
+            flash(f"{continent_1}'s total cases: {result}", "success") 
+            return redirect("/query")
+
+        if query_type == "world-total-query":
+            cursor.execute(f"SELECT SUM(t.TotalCases) as total_cases FROM  worldometer_data t;")
+            result = cursor.fetchone()
+
+            # Close the connection
+            cursor.close()
+            conn.close()
+
+            # need to handle output, redirect to result page
+            flash(f"world total cases: {result}", "success") 
+            return redirect("/query")
+
+        if query_type == "country-comparison":
+            country_2 = request.form.get('country-2') 
+            country_3 = request.form.get('country-3') 
+
+        if query_type == "peak-query":
+            country_4 = request.form.get('country-4') 
+            start_date = request.form.get('start-date')
+            end_date = request.form.get('end-date')
+
+            cursor.execute(f"""
+                           SELECT t.Date, t.New_cases 
+                           FROM full_grouped t 
+                           WHERE t.Country_Region = '{country_4}' 
+                           AND t.Date >= '{start_date}' AND t.Date <= '{end_date}' 
+                           AND t.New_cases >= ( SELECT MAX(t1.New_cases) 
+                                                FROM full_grouped t1 
+                                                WHERE t1.Date >= '{start_date}' AND t1.Date <= '{end_date}' 
+                                                AND t1.Country_Region = '{country_4}');
+                            """)
+            result = cursor.fetchall()
+
+            # Close the connection
+            cursor.close()
+            conn.close()
+
+            # need to handle output, redirect to result page
+            return redirect("/query")
+
+        if query_type == "sum-query":
+            country_5 = request.form.get('country-5') 
+            start_date = request.form.get('start-date')
+            end_date = request.form.get('end-date')
+
     return render_template("query.html")
 
+# Update Page
+@app.route("/update", methods=["GET", "POST"])
+def update():
+    return render_template("update.html")
+
+# Create_Update Page
+@app.route("/create_update", methods=["GET", "POST"])
+def create_update():
+    if request.method == "POST":
+
+        # Connect to the database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        country = request.form.get('country')
+        date = request.form.get('date')
+        new_cases = request.form.get('cases')
+
+        cursor.execute(f"""""")
+
+    return render_template("create_update.html")
+
+# Delete Page
+@app.route("/delete", methods=["GET", "POST"])
+def delete():
+    return render_template("delete.html")
+
 # Logout
-@app.route("/logout")
+@app.route("/logout", methods=["GET"])
 def logout():
     session.pop('username', None)
     return redirect("/")
