@@ -10,8 +10,8 @@ app.secret_key = "your_secret_key"
 db_config = {
     'host': 'localhost',  # MySQL host
     'user': 'root',  # MySQL username
-    'password': 'Hsg7gs$#GdA0',  # MySQL password
-    'database': 'final_test'  # MySQL database name
+    'password': '',  # MySQL password
+    'database': ''  # MySQL database name
 }
 
 # Database Connection
