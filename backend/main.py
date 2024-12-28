@@ -10,8 +10,8 @@ app.secret_key = "your_secret_key"
 db_config = {
     'host': 'localhost',  # MySQL host
     'user': 'root',  # MySQL username
-    'password': '',  # MySQL password
-    'database': ''  # MySQL database name
+    'password': 'Hsg7gs$#GdA0',  # MySQL password
+    'database': 'final_test'  # MySQL database name
 }
 
 # Database Connection
@@ -174,7 +174,12 @@ def create_update():
         date = request.form.get('date')
         new_cases = request.form.get('cases')
 
-        cursor.execute(f"""""")
+        cursor.execute(f"""
+                        CALL UpdateTables({date}, {country}, {new_cases});
+                        """)
+        # Close the connection
+        cursor.close()
+        conn.close()
 
     return render_template("create_update.html")
 
