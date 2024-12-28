@@ -5,6 +5,7 @@ CREATE TABLE users (
 );
 
 
+
 CREATE TABLE country_wise_latest(
     Country_Region VARCHAR(30),
     Confirmed INT DEFAULT 0,
@@ -113,6 +114,60 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 LINES
 (Country_Region, Continent, Population, TotalCases, TotalDeaths, TotalRecovered, ActiveCases, Serious_Critical, TotalTests);
+
+
+
+DELIMITER // 
+
+CREATE PROCEDURE UpdateTables( 
+    IN date DATE, 
+    IN country VARCHAR(255), 
+    IN new_cases INT 
+) 
+BEGIN 
+    DECLARE old_new_cases INT; 
+
+    -- retrieve the old value of New_cases and store it in old_new_cases 
+    SELECT New_cases INTO old_new_cases 
+    FROM full_grouped 
+    WHERE Date = date 
+    AND Country_Region = country; 
+
+    UPDATE full_grouped 
+    SET New_cases = new_cases 
+    WHERE Date = date 
+    AND Country_Region = country; 
+
+    UPDATE full_grouped 
+    SET Confirmed = Confirmed - old_new_cases + new_cases,  
+        Active = Active - old_new_cases + new_cases 
+    WHERE Date >= date 
+    AND Country_Region = country; 
+
+    UPDATE day_wise 
+    SET New_cases = New_cases - old_new_cases + new_cases 
+    WHERE Date = date; 
+
+    UPDATE day_wise 
+    SET Confirmed = Confirmed - old_new_cases + new_cases,  
+        Active = Active - old_new_cases + new_cases 
+    WHERE Date >= date; 
+
+    UPDATE worldometer_data 
+    SET TotalCases = TotalCases - old_new_cases + new_cases,  
+        ActiveCases = ActiveCases - old_new_cases + new_cases 
+    WHERE Country_Region = country; 
+
+    UPDATE country_wise_latest 
+    SET Confirmed = Confirmed - old_new_cases + new_cases,  
+        Active = Active - old_new_cases + new_cases 
+    WHERE Country_Region = country; 
+
+END 
+// 
+
+DELIMITER ; 
+
 
 
 
