@@ -1,4 +1,5 @@
 from flask import Flask, url_for, render_template, request, redirect, flash, session
+from datetime import datetime
 import mysql.connector
 import hashlib
 
@@ -17,6 +18,30 @@ db_config = {
 # Database Connection
 def get_db_connection():
     return mysql.connector.connect(**db_config)
+
+def execute_query(query, params=None, fetch="all"):
+    print("Executing query:", query) # debug
+    print("With params:", params) # debug
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(query, params or ())
+        if fetch == "one":
+            result = cursor.fetchone()
+        else:
+            result = cursor.fetchall()
+
+        print("Query result:", result) # debug
+
+        conn.commit()
+        return result
+    except Exception as err:
+        print(f"Database error: {err}")
+        return None
+    finally:
+        cursor.close()
+        conn.close()
 
 # Login Page
 @app.route("/", methods=["GET", "POST"])
@@ -67,99 +92,155 @@ def home():
 # Query Page
 @app.route("/query", methods=["GET", "POST"])
 def query():
-    if request.method == "POST":
+    # extract result from query
+    extracted_result = session.get('result_data', None)
+    # print("Session result data:", extracted_result) # debug
+    session.pop('result_data', None) 
 
-        # Connect to the database
-        conn = get_db_connection()
-        cursor = conn.cursor()
+
+    if request.method == "POST":
+        # print("POST request received.") # debug
 
         # recieve query type
         query_type = request.form.get('query')  # e.g. 'country-query'
+        result = None
 
-        if query_type == "country-query":
-            country_1 = request.form.get('country-name') 
-            cursor.execute(f"""SELECT t.Confirmed as total_cases 
-                           FROM country_wise_latest t 
-                           WHERE t.Country_Region = %s;
-                           """, ((country_1),))
-            result = cursor.fetchone()
+        # print("Query type received:", query_type)  # debug
 
-            # Close the connection
-            cursor.close()
-            conn.close()
+        if query_type == "country-total-query":
+            country = request.form.get('country-1') 
+            print("request.form.get: ", country) # debug
+            result = execute_query(f""" SELECT t.Confirmed as total_cases 
+                                        FROM country_wise_latest t 
+                                        WHERE t.Country_Region = %s;
+                                        """, (country,), fetch="one")
+            # show results
+            flash(f"{country}'s total cases: {result[0]}", "success")
 
-            # need to handle output, redirect to result page
-            flash(f"{country_1}'s total cases: {result}", "success") 
-            return redirect("/query")
 
-        if query_type == "continent-query":
-            continent_1 = request.form.get('continent-name')
-            cursor.execute(f"""SELECT SUM(t.TotalCases) as total_cases 
-                           FROM  worldometer_data t 
-                           WHERE t.Continent = %s 
-                           GROUP BY t.Continent;
-                           """, ((continent_1),))
-            result = cursor.fetchone()
+        elif query_type == "continent-total-query":
+            continent = request.form.get('continent-1')
+            result = execute_query(f""" SELECT SUM(t.TotalCases) as total_cases 
+                                        FROM  worldometer_data t 
+                                        WHERE t.Continent = %s 
+                                        GROUP BY t.Continent;
+                                        """, (continent,), fetch="one")
+            # show results
+            flash(f"{continent}'s total cases: {result[0]}", "success")
 
-            # Close the connection
-            cursor.close()
-            conn.close()
 
-            # need to handle output, redirect to result page
-            flash(f"{continent_1}'s total cases: {result}", "success") 
-            return redirect("/query")
+        elif query_type == "world-total-query":
+            result = execute_query(f""" SELECT SUM(t.TotalCases) as total_cases 
+                                        FROM  worldometer_data t;""", (), fetch="one")
+            # show results
+            flash(f"world's total cases: {result[0]}", "success")
 
-        if query_type == "world-total-query":
-            cursor.execute(f"SELECT SUM(t.TotalCases) as total_cases FROM  worldometer_data t;")
-            result = cursor.fetchone()
 
-            # Close the connection
-            cursor.close()
-            conn.close()
+        elif query_type == "country-peak-query":
+            country = request.form.get('country-4') 
+            start_date = request.form.get('start-date1')
+            end_date = request.form.get('end-date1')
 
-            # need to handle output, redirect to result page
-            flash(f"world total cases: {result}", "success") 
-            return redirect("/query")
+            result = execute_query(f"""
+                                    SELECT t.Date, t.New_cases 
+                                    FROM full_grouped t 
+                                    WHERE t.Country_Region = %s 
+                                    AND t.Date >= %s AND t.Date <= %s 
+                                    AND t.New_cases >= 
+                                    ( 
+                                    SELECT MAX(t1.New_cases) 
+                                    FROM full_grouped t1 
+                                    WHERE t1.Date >= %s 
+                                    AND t1.Date <= %s 
+                                    AND t1.Country_Region = %s
+                                    );
+                            """, (country, start_date, end_date, start_date, end_date, country), fetch="one")
+            # show results
+            flash(f"""{country}'s peak in cases between\n {start_date} and {end_date} is: 
+                  at {result[0]}, where there were {result[1]} new cases""", "success")
 
-        if query_type == "country-comparison":
-            country_2 = request.form.get('country-2') 
-            country_3 = request.form.get('country-3') 
 
-        if query_type == "peak-query":
-            country_4 = request.form.get('country-4') 
-            start_date = request.form.get('start-date')
-            end_date = request.form.get('end-date')
+        elif query_type == "continent-peak-query":
+            continent = request.form.get('continent-2') 
+            start_date = request.form.get('start-date1')
+            end_date = request.form.get('end-date1')
 
-            cursor.execute(f"""
-                           SELECT t.Date, t.New_cases 
-                           FROM full_grouped t 
-                           WHERE t.Country_Region = '{country_4}' 
-                           AND t.Date >= '{start_date}' AND t.Date <= '{end_date}' 
-                           AND t.New_cases >= ( SELECT MAX(t1.New_cases) 
-                                                FROM full_grouped t1 
-                                                WHERE t1.Date >= '{start_date}' AND t1.Date <= '{end_date}' 
-                                                AND t1.Country_Region = '{country_4}');
-                            """)
-            result = cursor.fetchall()
+            result = execute_query(f"""
+                                    SELECT t2.Date, SUM(t2.New_cases) AS sum_cases 
+                                    FROM worldometer_data t1 
+                                    INNER JOIN full_grouped t2 
+                                    ON t1.Country_Region = t2.Country_Region 
+                                    WHERE t1.Continent = %s 
+                                    AND t2.Date >= %s 
+                                    AND t2.Date <= %s 
+                                    GROUP BY t2.Date 
+                                    HAVING SUM(t2.New_cases) = 
+                                    ( 
+                                    SELECT MAX(sub_query.daily_sum) 
+                                    FROM 
+                                    ( 
+                                    SELECT t2.Date, SUM(t2.New_cases) AS daily_sum 
+                                    FROM worldometer_data t1 
+                                    INNER JOIN full_grouped t2 
+                                    ON t1.Country_Region = t2.Country_Region 
+                                    WHERE t1.Continent = %s 
+                                    AND t2.Date >= %s 
+                                    AND t2.Date <= %S 
+                                    GROUP BY t2.Date 
+                                    ) AS sub_query 
+                                    );    
+                            """, (continent, start_date, end_date, continent, start_date, end_date), fetch="one")
+            # show results
+            flash(f"""{continent}'s peak in cases between\n {start_date} and {end_date} is: 
+                  at {result[0]}, where there were {result[1]} new cases""", "success")
+            
 
-            # Close the connection
-            cursor.close()
-            conn.close()
+        elif query_type == "country-sum-query":
+            country = request.form.get('country-5') 
+            start_date = request.form.get('start-date2')
+            end_date = request.form.get('end-date2')
 
-            # need to handle output, redirect to result page
-            return redirect("/query")
+            result = execute_query(f""" SELECT t.Country_Region, 
+                                        SUM(t.New_cases) as sum
+                                        FROM full_grouped t
+                                        WHERE t.Date >= %s
+                                        AND  t.Date < %s
+                                        AND t.Country_Region = %s;
+                                        """, (start_date, end_date, country))
+            # show results
+            flash(f"{country}'s total cases between {start_date} and {end_date} is: {result[0]}", "success")
+            
+        elif query_type == "continent-sum-query":
+            continent = request.form.get('continent-3') 
+            start_date = request.form.get('start-date3')
+            end_date = request.form.get('end-date3')
 
-        if query_type == "sum-query":
-            country_5 = request.form.get('country-5') 
-            start_date = request.form.get('start-date')
-            end_date = request.form.get('end-date')
+            result = execute_query(f""" SELECT SUM(Sub.sum) AS total_cases
+                                        FROM worldometer_data t
+                                        INNER JOIN
+                                        ( 
+                                        SELECT t1.Country_Region, 
+                                        SUM(t1.New_cases) as sum
+                                        FROM full_grouped t1
+                                        WHERE t1.Date >= %s
+                                        AND  t1.Date <= %s
+                                        GROUP BY t1.Country_Region
+                                        ) AS Sub 
+                                        ON t.Country_Region = Sub.Country_Region
+                                        WHERE  t.Continent = %s
+                                        GROUP BY t.Continent;
+                                        """, (start_date, end_date, continent))
+            # show results
+            flash(f"{continent}'s total cases between {start_date} and {end_date} is: {result[0]}", "success")
 
-    return render_template("query.html")
 
-# Update Page
-@app.route("/update", methods=["GET", "POST"])
-def update():
-    return render_template("update.html")
+        print("Flash query result:", result) # debug
+
+        # handle output
+        session['result_data'] = result
+        return redirect("/query")
+
+    return render_template("query.html", result_data = extracted_result)
 
 # Create_Update Page
 @app.route("/create_update", methods=["GET", "POST"])
@@ -181,11 +262,29 @@ def create_update():
         cursor.close()
         conn.close()
 
+    # flash(f"update successful\n", "success")
     return render_template("create_update.html")
 
 # Delete Page
 @app.route("/delete", methods=["GET", "POST"])
 def delete():
+    if request.method == "POST":
+
+        # Connect to the database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        country = request.form.get('country')
+        date = request.form.get('date')
+
+        # real delete should not be allowed, so reset to 0.
+        cursor.execute(f"""
+                        CALL UpdateTables({date}, {country}, 0);
+                        """)
+        # Close the connection
+        cursor.close()
+        conn.close()
+
     return render_template("delete.html")
 
 # Logout
