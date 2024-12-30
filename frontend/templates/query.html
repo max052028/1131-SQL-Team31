@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <title>Query</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .sticky {
+            background-color: #576d9e;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sticky p {
+            margin: 10px;
+            color: #fff;
+            font-weight: bold;
+        }
+        .sticky-right {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        .sticky-right button {
+            background-color: #5abd71;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 30px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            margin-right: 20px;
+        }
+        .sticky-right button:hover {
+            background-color: #c85454;
+            transform: scale(1.05);
+        }
+        .main {
+            text-align: center;
+            padding: 0px 10px;
+            flex: 1;
+        }
+        .container {
+            max-width: 800px;
+            margin: 150px auto 50px auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h2 {
+            font-size: 24px;
+            color: #333;
+        }
+        fieldset {
+            border: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        label {
+            font-size: 16px;
+            color: #333;
+            margin-right: 10px;
+        }
+        select, input[type="date"] {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="submit"] {
+            background-color: #5abd71;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        input[type="submit"]:hover {
+            background-color: #218838;
+        }
+        a {
+            text-decoration: none;
+            color: #576d9e;
+            font-size: 14px;
+            margin-top: 20px;
+            display: inline-block;
+        }
+        footer {
+            text-align: center;
+            padding: 10px 20px;
+            color: gray;
+            font-size: 14px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+        }
+        .flash-messages .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .flash-messages .danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body> 
+    <div class="sticky">
+        <p> DMBS Final Project Group 31</p>
+        <div class="sticky-right">
+            <form action="/logout" method="get">
+                <button type="submit">Log Out</button>
+            </form>
+        </div>
+    </div>
+    <div class="main">
+        <div class="container">
+            <h2>Query</h2>
+            <form action="/query" method="POST">
+                <fieldset>
+                    <input type="radio" id="country-total-query" name="query" value="country-total-query"/>
+                    <label for="country-total-query">Total cases of the country:
+                        <select id="country-1" name="country-1"></select>
+                    </label>
+                    <br/>
+                    <input type="radio" id="continent-total-query" name="query" value="continent-total-query"/>
+                    <label for="continent-total-query">Total cases of the continent:
+                        <select id="continent-1" name="continent-1"></select>
+                    </label>
+                    <br/>
+                    <input type="radio" id="world-total-query" name="query" value="world-total-query"/>
+                    <label for="world-total-query">
+                        Total cases of the world
+                    </label>
+                    <br/>
+                    <input type="radio" id="country-peak-query" name="query" value="country-peak-query"/>
+                    <label for="country-peak-query">Peak in country:
+                        <select id="country-4" name="country-4"></select>
+                        during
+                        <input type="date" name="start-date1"/>
+                        and
+                        <input type="date" name="end-date1"/>
+                    </label>
+                    <br/>
+                    <input type="radio" id="continent-peak-query" name="query" value="continent-peak-query"/>
+                    <label for="continent-peak-query">Peak in continent:
+                        <select id="continent-2" name="continent-2"></select>
+                        during
+                        <input type="date" name="continent-peak-start-date"/>
+                        and
+                        <input type="date" name="continent-peak-end-date"/>
+                    </label>
+                    <br/>
+                    <input type="radio" id="country-sum-query" name="query" value="country-sum-query"/>
+                    <label for="country-sum-query">Sum of cases in country:
+                        <select id="country-5" name="country-5"></select>
+                        during
+                        <input type="date" name="start-date2"/>
+                        and
+                        <input type="date" name="end-date2"/>
+                    </label>
+                    <br/>
+                    <input type="radio" id="continent-sum-query" name="query" value="continent-sum-query"/>
+                    <label for="continent-sum-query">Sum of cases in continent:
+                        <select id="continent-3" name="continent-3"></select>
+                        during
+                        <input type="date" name="start-date3"/>
+                        and
+                        <input type="date" name="end-date3"/>
+                    </label>
+                    <br/>
+                    <input type="radio" id="world-sum-query" name="query" value="world-sum-query"/>
+                    <label for="world-sum-query">
+                        Sum of cases in the world during
+                        <input type="date" name="start-date4"/>
+                        and
+                        <input type="date" name="end-date4"/>
+                    </label>
+                    <br/>
+                </fieldset>
+                <input type="submit" id="submit"/>
+            </form>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    <ul>
+                        {% for category, message in messages %}
+                            <li class="{{ category }}">{{ message|safe }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            {% endwith %}
+            <a href="{{url_for('home')}}">Back to home page</a>
+        </div>
+    </div>
+    <footer>
+        &copy; 2024 Group 31 - All rights reserved.
+    </footer>
+    <script src="static/js/query.js"></script>
+</body>
+</html>
