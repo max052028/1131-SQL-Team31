@@ -38,9 +38,9 @@ CREATE TABLE covid_19_clean_complete(
 
 LOAD DATA LOCAL INFILE './covid_19_clean_complete.csv' 
 INTO TABLE covid_19_clean_complete 
-FIELDS TERMINATED BY ','
-LINES TERMINATED BY '\n' 
+FIELDS TERMINATED BY ',' 
 ENCLOSED BY '"' 
+LINES TERMINATED BY '\n'  
 IGNORE 1 LINES 
 (Province_State, Country_Region, Date, Confirmed, Deaths, Recovered, Active);
 
@@ -84,13 +84,13 @@ CREATE TABLE full_grouped(
     PRIMARY KEY CLUSTERED (Date, Country_Region)
 );
 
-LOAD DATA LOCAL INFILE './full_grouped.csv'
-INTO TABLE full_grouped
-FIELDS TERMINATED BY ','
-ENCLOSED BY '"'
-LINES TERMINATED BY '\n'
-IGNORE 1 LINES
-(Date, Country_Region, Confirmed, Deaths, Recovered, Active, New_cases, New_deaths, New_recovered);
+LOAD DATA LOCAL INFILE './full_grouped.csv' 
+INTO TABLE full_grouped 
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"' 
+LINES TERMINATED BY '\n' 
+IGNORE 1 LINES 
+(Date, Country_Region, Confirmed, Deaths, Recovered, Active, New_cases, New_deaths, New_recovered); 
 
 
 
@@ -107,21 +107,21 @@ CREATE TABLE worldometer_data(
     PRIMARY KEY CLUSTERED (Country_Region)
 );
 
-LOAD DATA LOCAL INFILE './worldometer_data.csv'
-INTO TABLE worldometer_data
-FIELDS TERMINATED BY ','
-ENCLOSED BY '"'
-LINES TERMINATED BY '\n'
-IGNORE 1 LINES
+LOAD DATA LOCAL INFILE './worldometer_data.csv' 
+INTO TABLE worldometer_data 
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"' 
+LINES TERMINATED BY '\n' 
+IGNORE 1 LINES 
 (Country_Region, Continent, Population, TotalCases, TotalDeaths, TotalRecovered, ActiveCases, Serious_Critical, TotalTests);
 
 
 
 DELIMITER // 
 
-CREATE PROCEDURE UpdateTables( 
-    IN date DATE, 
-    IN country VARCHAR(255), 
+CREATE PROCEDURE UpdateTables(  
+    IN date DATE,  
+    IN country VARCHAR(50),  
     IN new_cases INT 
 ) 
 BEGIN 
@@ -131,7 +131,8 @@ BEGIN
     SELECT New_cases INTO old_new_cases 
     FROM full_grouped 
     WHERE Date = date 
-    AND Country_Region = country; 
+    AND Country_Region = country
+    LIMIT 1;  
 
     UPDATE full_grouped 
     SET New_cases = new_cases 
@@ -163,10 +164,9 @@ BEGIN
         Active = Active - old_new_cases + new_cases 
     WHERE Country_Region = country; 
 
-END 
-// 
+END; // 
 
-DELIMITER ; 
+DELIMITER ;
 
 
 
