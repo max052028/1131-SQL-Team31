@@ -33,7 +33,6 @@ def execute_query(query, params=None, fetch="all"):
             result = cursor.fetchall()
 
         print("Query result:", result) # debug
-
         conn.commit()
         return result
     except Exception as err:
@@ -114,26 +113,60 @@ def query():
                                         FROM country_wise_latest t 
                                         WHERE t.Country_Region = %s;
                                         """, (country,), fetch="one")
+            
+            result_2 = execute_query(f""" SELECT t.Deaths as total_cases 
+                                        FROM country_wise_latest t 
+                                        WHERE t.Country_Region = %s;
+                                        """, (country,), fetch="one")
+            result_3 = execute_query(f""" SELECT t.Recovered as total_cases 
+                                        FROM country_wise_latest t 
+                                        WHERE t.Country_Region = %s;
+                                        """, (country,), fetch="one")
             # show results
-            flash(f"{country}'s total cases: {result[0]}", "success")
+            flash(f"""{country}'s 
+                  <br>total cases: {result[0]} 
+                  <br>total deaths: {result_2[0]} 
+                  <br>total recovered: {result_3[0]}""", "success")
 
 
         elif query_type == "continent-total-query":
             continent = request.form.get('continent-1')
             result = execute_query(f""" SELECT SUM(t.TotalCases) as total_cases 
                                         FROM  worldometer_data t 
-                                        WHERE t.Continent = %s 
-                                        GROUP BY t.Continent;
+                                        WHERE t.Continent = %s;
+                                        """, (continent,), fetch="one")
+            
+            result_2 = execute_query(f""" SELECT SUM(t.TotalDeaths) as total_cases 
+                                        FROM  worldometer_data t 
+                                        WHERE t.Continent = %s;
+                                        """, (continent,), fetch="one")
+            
+            result_3 = execute_query(f""" SELECT SUM(t.TotalRecovered) as total_cases 
+                                        FROM  worldometer_data t 
+                                        WHERE t.Continent = %s;
                                         """, (continent,), fetch="one")
             # show results
-            flash(f"{continent}'s total cases: {result[0]}", "success")
+            flash(f"""{continent}'s 
+                    <br>total cases: {result[0]}
+                    <br>total deaths: {result_2[0]}
+                    <br>total recovered: {result_3[0]}
+                    """, "success")
 
 
         elif query_type == "world-total-query":
             result = execute_query(f""" SELECT SUM(t.TotalCases) as total_cases 
                                         FROM  worldometer_data t;""", (), fetch="one")
+
+            result_2 = execute_query(f""" SELECT SUM(t.TotalDeaths) as total_cases 
+                                        FROM  worldometer_data t;""", (), fetch="one")
+            
+            result_3 = execute_query(f""" SELECT SUM(t.TotalRecovered) as total_cases 
+                                        FROM  worldometer_data t;""", (), fetch="one")
             # show results
-            flash(f"world's total cases: {result[0]}", "success")
+            flash(f"""world's total cases: {result[0]}
+                    <br>world's total deaths: {result_2[0]}
+                    <br>world's total recovered: {result_3[0]}
+                    """, "success")
 
 
         elif query_type == "country-peak-query":
@@ -154,16 +187,50 @@ def query():
                                     AND t1.Date <= %s 
                                     AND t1.Country_Region = %s
                                     );
-                            """, (country, start_date, end_date, start_date, end_date, country), fetch="one")
+                            """, (country, start_date, end_date, start_date, end_date, country), fetch="all")
+            
+            result_2 = execute_query(f"""
+                                    SELECT t.Date, t.New_deaths 
+                                    FROM full_grouped t 
+                                    WHERE t.Country_Region = %s 
+                                    AND t.Date >= %s AND t.Date <= %s 
+                                    AND t.New_deaths >= 
+                                    ( 
+                                    SELECT MAX(t1.New_deaths) 
+                                    FROM full_grouped t1 
+                                    WHERE t1.Date >= %s 
+                                    AND t1.Date <= %s 
+                                    AND t1.Country_Region = %s
+                                    );
+                            """, (country, start_date, end_date, start_date, end_date, country), fetch="all")
+            
+            result_3 = execute_query(f"""
+                                    SELECT t.Date, t.New_recovered 
+                                    FROM full_grouped t 
+                                    WHERE t.Country_Region = %s 
+                                    AND t.Date >= %s AND t.Date <= %s 
+                                    AND t.New_recovered >= 
+                                    ( 
+                                    SELECT MAX(t1.New_recovered) 
+                                    FROM full_grouped t1 
+                                    WHERE t1.Date >= %s 
+                                    AND t1.Date <= %s 
+                                    AND t1.Country_Region = %s
+                                    );
+                            """, (country, start_date, end_date, start_date, end_date, country), fetch="all")
+            
             # show results
-            flash(f"""{country}'s peak in cases between\n {start_date} and {end_date} is: 
-                  at {result[0]}, where there were {result[1]} new cases""", "success")
+            flash(f"""{country}'s between {start_date} and {end_date} has: 
+                  <br>peak in cases at {result[0][0]}, where there were {int(result[0][1])} new cases
+                  <br>peak in deaths at {result_2[0][0]}, where there were {int(result_2[0][1])} new deaths
+                  <br>peak in recovered at {result_3[0][0]}, where there were {int(result_3[0][1])} new recovered""", "success")
 
 
         elif query_type == "continent-peak-query":
             continent = request.form.get('continent-2') 
-            start_date = request.form.get('start-date1')
-            end_date = request.form.get('end-date1')
+            start_date = request.form.get('continent-peak-start-date')
+            end_date = request.form.get('continent-peak-end-date')
+            print("Form data received:", request.form) # debug
 
             result = execute_query(f"""
                                     SELECT t2.Date, SUM(t2.New_cases) AS sum_cases 
@@ -185,14 +252,68 @@ def query():
                                     ON t1.Country_Region = t2.Country_Region 
                                     WHERE t1.Continent = %s 
                                     AND t2.Date >= %s 
-                                    AND t2.Date <= %S 
+                                    AND t2.Date <= %s 
+                                    GROUP BY t2.Date 
+                                    ) AS sub_query 
+                                    );    
+                            """, (continent, start_date, end_date, continent, start_date, end_date), fetch="one")
+
+            result_2 = execute_query(f"""
+                                    SELECT t2.Date, SUM(t2.New_deaths) AS sum_cases 
+                                    FROM worldometer_data t1 
+                                    INNER JOIN full_grouped t2 
+                                    ON t1.Country_Region = t2.Country_Region 
+                                    WHERE t1.Continent = %s 
+                                    AND t2.Date >= %s 
+                                    AND t2.Date <= %s 
+                                    GROUP BY t2.Date 
+                                    HAVING SUM(t2.New_deaths) = 
+                                    ( 
+                                    SELECT MAX(sub_query.daily_sum) 
+                                    FROM 
+                                    ( 
+                                    SELECT t2.Date, SUM(t2.New_deaths) AS daily_sum 
+                                    FROM worldometer_data t1 
+                                    INNER JOIN full_grouped t2 
+                                    ON t1.Country_Region = t2.Country_Region 
+                                    WHERE t1.Continent = %s 
+                                    AND t2.Date >= %s 
+                                    AND t2.Date <= %s 
+                                    GROUP BY t2.Date 
+                                    ) AS sub_query 
+                                    );    
+                            """, (continent, start_date, end_date, continent, start_date, end_date), fetch="one")
+
+            result_3 = execute_query(f"""
+                                    SELECT t2.Date, SUM(t2.New_recovered) AS sum_cases 
+                                    FROM worldometer_data t1 
+                                    INNER JOIN full_grouped t2 
+                                    ON t1.Country_Region = t2.Country_Region 
+                                    WHERE t1.Continent = %s 
+                                    AND t2.Date >= %s 
+                                    AND t2.Date <= %s 
+                                    GROUP BY t2.Date 
+                                    HAVING SUM(t2.New_recovered) = 
+                                    ( 
+                                    SELECT MAX(sub_query.daily_sum) 
+                                    FROM 
+                                    ( 
+                                    SELECT t2.Date, SUM(t2.New_recovered) AS daily_sum 
+                                    FROM worldometer_data t1 
+                                    INNER JOIN full_grouped t2 
+                                    ON t1.Country_Region = t2.Country_Region 
+                                    WHERE t1.Continent = %s 
+                                    AND t2.Date >= %s 
+                                    AND t2.Date <= %s 
                                     GROUP BY t2.Date 
                                     ) AS sub_query 
                                     );    
                             """, (continent, start_date, end_date, continent, start_date, end_date), fetch="one")
             # show results
-            flash(f"""{continent}'s peak in cases between\n {start_date} and {end_date} is: 
-                  at {result[0]}, where there were {result[1]} new cases""", "success")
+            flash(f"""{continent}'s between {start_date} and {end_date} has: 
+                  <br>peak in cases at {result[0]}, where there were {result[1]} new cases
+                  <br>peak in deaths at {result_2[0]}, where there were {result_2[1]} new deaths
+                  <br>peak in recovered at {result_3[0]}, where there were {result_3[1]} new recovered""", "success")
             
 
         elif query_type == "country-sum-query":
@@ -200,15 +321,31 @@ def query():
             start_date = request.form.get('start-date2')
             end_date = request.form.get('end-date2')
 
-            result = execute_query(f""" SELECT t.Country_Region, 
-                                        SUM(t.New_cases) as sum
+            result = execute_query(f""" SELECT SUM(t.New_cases) as sum
                                         FROM full_grouped t
                                         WHERE t.Date >= %s
-                                        AND  t.Date < %s
+                                        AND  t.Date <= %s
+                                        AND t.Country_Region = %s;
+                                        """, (start_date, end_date, country))
+
+            result_2 = execute_query(f""" SELECT SUM(t.New_deaths) as sum
+                                        FROM full_grouped t
+                                        WHERE t.Date >= %s
+                                        AND  t.Date <= %s
+                                        AND t.Country_Region = %s;
+                                        """, (start_date, end_date, country))
+            result_3 = execute_query(f""" SELECT SUM(t.New_recovered) as sum
+                                        FROM full_grouped t
+                                        WHERE t.Date >= %s
+                                        AND  t.Date <= %s
                                         AND t.Country_Region = %s;
                                         """, (start_date, end_date, country))
             # show results
-            flash(f"{country}'s total cases between {start_date} and {end_date} is: {result[0]}", "success")
+            flash(f"""{country} between {start_date} and {end_date} has: 
+                    <br>total cases: {int(result[0][0])}
+                    <br>total deaths: {int(result_2[0][0])}
+                    <br>total recovered: {int(result_3[0][0])}
+                    """, "success")
             
         elif query_type == "continent-sum-query":
             continent = request.form.get('continent-3') 
@@ -230,8 +367,73 @@ def query():
                                         WHERE  t.Continent = %s
                                         GROUP BY t.Continent;
                                         """, (start_date, end_date, continent))
+
+            result_2 = execute_query(f""" SELECT SUM(Sub.sum) AS total_cases
+                                        FROM worldometer_data t
+                                        INNER JOIN
+                                        ( 
+                                        SELECT t1.Country_Region, 
+                                        SUM(t1.New_deaths) as sum
+                                        FROM full_grouped t1
+                                        WHERE t1.Date >= %s
+                                        AND  t1.Date <= %s
+                                        GROUP BY t1.Country_Region
+                                        ) AS Sub 
+                                        ON t.Country_Region = Sub.Country_Region
+                                        WHERE  t.Continent = %s
+                                        GROUP BY t.Continent;
+                                        """, (start_date, end_date, continent))
+            
+            result_3 = execute_query(f""" SELECT SUM(Sub.sum) AS total_cases
+                                        FROM worldometer_data t
+                                        INNER JOIN
+                                        ( 
+                                        SELECT t1.Country_Region, 
+                                        SUM(t1.New_recovered) as sum
+                                        FROM full_grouped t1
+                                        WHERE t1.Date >= %s
+                                        AND  t1.Date <= %s
+                                        GROUP BY t1.Country_Region
+                                        ) AS Sub 
+                                        ON t.Country_Region = Sub.Country_Region
+                                        WHERE  t.Continent = %s
+                                        GROUP BY t.Continent;
+                                        """, (start_date, end_date, continent))
             # show results
-            flash(f"{continent}'s total cases between {start_date} and {end_date} is: {result[0]}", "success")
+            flash(f"""{continent} between {start_date} and {end_date} has: 
+                    <br>total cases: {int(result[0][0])}
+                    <br>total deaths: {int(result_2[0][0])}
+                    <br>total recovered: {int(result_3[0][0])}
+                    """, "success")
+
+        elif query_type == "world-sum-query":
+            start_date = request.form.get('start-date4')
+            end_date = request.form.get('end-date4')
+
+            result = execute_query(f""" SELECT SUM(t.New_cases) as sum
+                                        FROM day_wise t
+                                        WHERE t.Date >= %s
+                                        AND  t.Date <= %s;
+                                        """, (start_date, end_date))
+            
+            result_2 = execute_query(f""" SELECT SUM(t.New_deaths) as sum
+                                        FROM day_wise t
+                                        WHERE t.Date >= %s
+                                        AND  t.Date <= %s;
+                                        """, (start_date, end_date))
+            
+            result_3 = execute_query(f""" SELECT SUM(t.New_recovered) as sum
+                                        FROM day_wise t
+                                        WHERE t.Date >= %s
+                                        AND  t.Date <= %s;
+                                        """, (start_date, end_date))
+            
+            flash(f"""In the world between {start_date} and {end_date} has: 
+                    <br>total cases: {int(result[0][0])}
+                    <br>total deaths: {int(result_2[0][0])}
+                    <br>total recovered: {int(result_3[0][0])}
+                    """, "success")
+
 
 
         print("Flash query result:", result) # debug
@@ -251,18 +453,23 @@ def create_update():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        country = request.form.get('country')
         date = request.form.get('date')
-        new_cases = request.form.get('cases')
+        country = request.form.get('country')
+        new_cases = request.form.get('case')
+
+        print("update request: ", (date, country, new_cases)) # debug
 
         cursor.execute(f"""
-                        CALL UpdateTables({date}, {country}, {new_cases});
-                        """)
+                        CALL UpdateTables(%s, %s, %s);
+                        """, (date, country, int(new_cases)))
+        conn.commit()
+        
         # Close the connection
         cursor.close()
         conn.close()
 
-    # flash(f"update successful\n", "success")
+        flash(f"update successful", "success")
+
     return render_template("create_update.html")
 
 # Delete Page
@@ -279,11 +486,14 @@ def delete():
 
         # real delete should not be allowed, so reset to 0.
         cursor.execute(f"""
-                        CALL UpdateTables({date}, {country}, 0);
-                        """)
+                        CALL UpdateTables(%s, %s, %s);
+                        """, (date, country, 0))
+        conn.commit()
         # Close the connection
         cursor.close()
         conn.close()
+
+        flash(f"delete successful", "success")
 
     return render_template("delete.html")
 
